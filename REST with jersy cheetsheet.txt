@@ -1,0 +1,467 @@
+
+REST with jersy cheetsheet:
+-------------------------
+hello world
+----------------
+Step 1: create dynamic web appication and copy jar into lib and add to build path
+
+Step 2: configure ServletContainer in web.xml
+
+        <servlet>
+		<servlet-name>jersy</servlet-name>
+		<servlet-class>org.glassfish.jersey.servlet.ServletContainer</servlet-class>
+			<init-param>
+				<param-name>jersey.config.server.provider.packages</param-name>
+				<param-value>com.bookapp</param-value>
+			</init-param>
+			
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>jersy</servlet-name>
+		<url-pattern>/*</url-pattern>
+	</servlet-mapping>
+	
+Step 3: write hello world rest controller
+
+
+@Path("/hello")
+public class HelloResouce {
+	
+	@GET
+	@Produces(MediaType.TEXT_PLAIN)
+	public String hello() {
+		return "hello";
+	}
+}
+
+-----------------------------------------
+Ex 2: 	@QueryParam and @PathParam
+
+
+	@GET
+	@Path("/{uname}")
+	@Produces(MediaType.TEXT_PLAIN)
+	public String hello2(@PathParam("uname")String name) {
+		return "hello 2"+" name: "+name ;
+	}
+	
+	//http://localhost:8090/app2/api/hello?uname=raj&city=noida
+	@GET
+	@Produces(MediaType.TEXT_PLAIN)
+	public String hello2(@QueryParam("uname")String name, @QueryParam("city")String city) {
+		return "hello 2"+" name: "+name +" "+ city;
+	}
+--------------------------------------------------
+Ex 3: CRUD application Bookapp
+---------------------------------------------------
+
+Step 1: create dynamic web appication and copy jar into lib and add to build path
+
+Step 2: configure ServletContainer in web.xml
+
+        <servlet>
+		<servlet-name>jersy</servlet-name>
+		<servlet-class>org.glassfish.jersey.servlet.ServletContainer</servlet-class>
+			<init-param>
+				<param-name>jersey.config.server.provider.packages</param-name>
+				<param-value>com.bookapp</param-value>
+			</init-param>
+			
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>jersy</servlet-name>
+		<url-pattern>/*</url-pattern>
+	</servlet-mapping>
+	
+step 3: create dao layer
+----------------------------------
+
+public class Book {
+	private int id;
+	private String isbn;
+	private String title;
+	private String author;
+	private double price;
+	
+	public int getId() {
+		return id;
+	}
+	public void setId(int id) {
+		this.id = id;
+	}
+	public String getIsbn() {
+		return isbn;
+	}
+	public void setIsbn(String isbn) {
+		this.isbn = isbn;
+	}
+	public String getTitle() {
+		return title;
+	}
+	public void setTitle(String title) {
+		this.title = title;
+	}
+	public String getAuthor() {
+		return author;
+	}
+	public void setAuthor(String author) {
+		this.author = author;
+	}
+	public double getPrice() {
+		return price;
+	}
+	public void setPrice(double price) {
+		this.price = price;
+	}
+	public Book(int id, String isbn, String title, String author, double price) {
+		super();
+		this.id = id;
+		this.isbn = isbn;
+		this.title = title;
+		this.author = author;
+		this.price = price;
+	}
+	public Book() {}
+	@Override
+	public String toString() {
+		return "Book [id=" + id + ", isbn=" + isbn + ", title=" + title + ", author=" + author + ", price=" + price
+				+ "]";
+	}
+	
+	
+	
+}
+
+
+
+
+
+public interface BookDao {
+	public List<Book>getAll();
+	public Book getBookById(int bookId);
+	public Book addBook(Book book);
+	public Book updateBook(int bookId, Book book);
+	public Book removeBook(int bookId);
+	
+}
+
+
+public class BookDaoImplUsingMap implements BookDao{
+	private static Map<Integer, Book> books=new HashMap<Integer, Book>();
+	static {
+		books.put(1, new Book(1, "ABC123", "head first", "katthy", 500.00));
+		books.put(2, new Book(2, "ABU123", "thinking in java", "amit", 400.00));
+	}
+	
+	@Override
+	public List<Book> getAll() {
+//		if(1==1)
+//			throw new RuntimeException("it is some db error");
+		
+		return new ArrayList<Book>(books.values());
+	}
+
+	@Override
+	public Book getBookById(int bookId) {
+		Book book= books.get(bookId);
+		if(book==null)
+			throw new BookNotFoundException("book with id "+ bookId +" is not found");
+		
+		return book;
+	}
+
+	@Override
+	public Book addBook(Book book) {
+		book.setId(books.size()+1);
+		books.put(book.getId(), book);
+		return book;
+	}
+
+	@Override
+	public Book updateBook(int bookId, Book book) {
+		Book bookToUpdate= getBookById(bookId);
+		bookToUpdate.setPrice(book.getPrice());
+		books.put(bookId, bookToUpdate);
+		
+		return bookToUpdate;
+	}
+
+	@Override
+	public Book removeBook(int bookId) {
+		Book bookToRemove=getBookById(bookId);
+		books.remove(bookId);
+		return bookToRemove;
+	}
+
+}
+
+
+
+public class BookNotFoundException extends RuntimeException {
+
+	public BookNotFoundException(String message) {
+		super(message);
+	}
+}
+
+
+
+Step 4: service layer
+---------------
+
+
+public interface BookService {
+	public List<Book>getAll();
+	public Book getBookById(int bookId);
+	public Book addBook(Book book);
+	public Book updateBook(int bookId, Book book);
+	public Book removeBook(int bookId);
+}
+
+
+
+public class BookServiceImpl implements BookService {
+
+	private BookDao bookDao;
+	
+	 public BookServiceImpl() {
+		bookDao=new BookDaoImplUsingMap();
+	}
+	@Override
+	public List<Book> getAll() {
+		return bookDao.getAll();
+	}
+	@Override
+	public Book getBookById(int bookId) {
+		return bookDao.getBookById(bookId);
+	}
+	@Override
+	public Book addBook(Book book) {
+		return bookDao.addBook(book);
+	}
+	@Override
+	public Book updateBook(int bookId, Book book) {
+		return bookDao.updateBook(bookId, book);
+	}
+	@Override
+	public Book removeBook(int bookId) {
+		return bookDao.removeBook(bookId);
+	}
+
+}
+
+step 5: write controller layer
+
+
+@Path("/api")
+public class BookController {
+
+	private BookService bookService;
+
+	public BookController() {
+		bookService = new BookServiceImpl();
+	}
+
+	// ---------get all the books---------
+	@GET
+	@Path("/books")
+	@Produces("application/json")
+	public List<Book> getAll() {
+		return bookService.getAll();
+	}
+
+	// ---------get an specific book by id---------
+	@GET
+	@Path("/books/{id}")
+	@Produces("application/json")
+	public Book getById(@PathParam("id") int id) {
+		return bookService.getBookById(id);
+	}
+
+	// --------add an book---------
+
+	@POST
+	@Path("/books")
+	@Consumes("application/json")
+	@Produces("application/json")
+	public Book addBook(Book book) {
+		Book bookAdded= bookService.addBook(book);
+		return bookAdded;
+	}
+
+	// --------update an book---------
+	@PUT
+	@Path("/books/{id}")
+	@Consumes("application/json")
+	@Produces("application/json")
+	public Book updateBook(@PathParam("id")  int id, Book book) {
+		return bookService.updateBook(id, book);
+	}
+	
+	//--------------delete an book----------204
+	
+	@DELETE
+	@Path("/books/{id}")
+	@Produces("application/json")
+	public Book deletById(@PathParam("id") int id) {
+		return bookService.removeBook(id);
+	}
+}
+
+
+
+
+
+--------------------------------------------------
+Ex 3: CRUD application Bookapp: using correct http status code
+---------------------------------------------------
+
+
+
+	@POST
+	@Path("/books")
+	@Consumes("application/json")
+	@Produces("application/json")
+	public Response addBook(Book book) {
+		Book bookAdded= bookService.addBook(book);
+		return Response.status(Status.CREATED).entity(bookAdded).build();
+	}
+	
+	@DELETE
+	@Path("/books/{id}")
+	@Produces("application/json")
+	public Response deletById(@PathParam("id") int id) {
+		 bookService.removeBook(id);
+		 return Response.status(Status.NO_CONTENT).build();
+	}
+
+
+
+
+
+--------------------------------------------------
+Ex 3: CRUD application Bookapp: using Exception handling
+---------------------------------------------------
+
+Step 1: create exception wrapper (that hold the exception information)
+
+public class ErrorMessage {
+	private String message;
+	private int statusCode;
+	private String toContect;
+}
+setp 2://i want to write an ex handler to handle BookNotFoundException
+
+@Provider
+public class BookNotFoundExHandler implements ExceptionMapper<BookNotFoundException>{
+
+	@Override
+	public Response toResponse(BookNotFoundException ex) {
+		ErrorMessage errorMessage=new ErrorMessage();
+		errorMessage.setMessage(ex.getMessage());
+		errorMessage.setStatusCode(404);
+		errorMessage.setToContect("ravi@oraclefin.com");
+		
+		return Response.status(Status.NOT_FOUND).entity(errorMessage).build();
+	}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+Agenda:
+* Jersy crud application
+* Understanding why REST is called REST
+* Returning correct status code
+* Exception handing
+* Hateoas
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+http://localhost:8090/app2/api/hello/kapil/delhi
+
+
+public class Book {
+	private int id;
+	private String isbn;
+	private String title;
+	private String author;
+	private double price;
+}
+
+
+public interface BookDao {
+	public List<Book> getAllBooks();
+	public Book getBookById(int bookId);
+	public Book addBook(Book book);
+	public Book updateBook(Book book);
+	public Book removeBook(int bookId);
+}
+
+@Service
+public class BookDaoMapImp implements BookDao {
+
+	private static Map<Integer, Book> books = new HashMap<Integer, Book>();
+	static {
+		books.put(1, new Book(1, "ABC123", "head first", "katthy", 500.00));
+		books.put(2, new Book(2, "ABU123", "head last", "amit", 400.00));
+	}
+
+	@Override
+	public List<Book> getAllBooks() {
+		return new ArrayList<Book>(books.values());
+	}
+
+	@Override
+	public Book getBookById(int bookId) {
+		return books.get(bookId);
+	}
+
+	@Override
+	public Book addBook(Book book) {
+		book.setId(books.size() + 1);
+		books.put(book.getId(), book);
+		return book;
+	}
+
+	@Override
+	public Book updateBook(Book book) {
+		if (book.getId() <= 0)
+			return null;
+		else
+			books.put(book.getId(), book);
+		return book;
+	}
+
+	@Override
+	public Book removeBook(int bookId) {
+		return books.remove(bookId);
+	}
+
+}
+
